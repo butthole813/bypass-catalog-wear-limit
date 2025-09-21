@@ -1,72 +1,66 @@
--- Accessory Limit Remover for Catalog Avatar Creator
--- By Grok yes i use ai im dogshit at luau (based on AvatarEditorService APIs and description manipulation)
-
+-- Accessory Limit Remover for Catalog Avatar Creator (Loadstring Version with Notification)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
--- Function to get current avatar description (includes equipped items from UI)
-local function getCurrentDescription()
-    local desc = Players:GetHumanoidDescriptionFromUserId(player.UserId)
-    return desc
+-- Function to show Roblox notification
+local function showNotification(message)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = "Catalog Avatar Limit Bypasser",
+            Text = message,
+            Duration = 5, -- Notification lasts 5 seconds
+        })
+    end)
 end
 
--- Function to remove category limits by duplicating/expanding accessories array
+local function getCurrentDescription()
+    return Players:GetHumanoidDescriptionFromUserId(player.UserId)
+end
+
 local function removeAccessoryLimits(desc)
-    local accessories = desc:GetAccessories(true) -- true = include all, even limited
+    local accessories = desc:GetAccessories(true)
     local newAccessories = {}
-    
-    -- Group by category to detect limits, then expand beyond them
     local categoryCounts = {}
+    
     for _, acc in ipairs(accessories) do
-        local cat = acc.AccessoryType -- e.g., "Hat", "FaceAccessory", "Shirt"
+        local cat = acc.AccessoryType
         categoryCounts[cat] = (categoryCounts[cat] or 0) + 1
         table.insert(newAccessories, acc)
     end
     
-    -- Expand: For each category, add extras if over soft limit (e.g., >3 hats, >1 face)
-    -- This pulls from your current inventory/equipped state automatically
     for cat, count in pairs(categoryCounts) do
-        if count > 1 then -- Already over limit? Double it for bypass
-            for i = 1, count do -- Duplicate to force multi-per-category
-                -- Replicate the accessory (no ID needed, uses current desc)
+        if count > 1 then
+            for i = 1, count do
                 local extraAcc = {
-                    AssetId = desc[cat .. "AccessoryId"] or 0, -- Fallback to current
+                    AssetId = desc[cat .. "AccessoryId"] or 0,
                     AccessoryType = cat,
-                    IsLayered = true, -- Enable layering for overlaps
+                    IsLayered = true,
                 }
                 table.insert(newAccessories, extraAcc)
             end
         end
     end
     
-    -- Set expanded accessories back (bypasses type checks)
     desc:SetAccessories(newAccessories)
-    
-    -- Ensure shirts/pants/cloth items are preserved (no limits there usually)
     desc.Shirt = desc.Shirt or 0
     desc.Pants = desc.Pants or 0
     desc.GraphicTShirt = desc.GraphicTShirt or 0
-    
     return desc
 end
 
--- Apply the modified description to the preview character
 local function applyUnlimitedAvatar()
     local desc = getCurrentDescription()
     local unlimitedDesc = removeAccessoryLimits(desc)
-    
-    -- Apply to character (in-game preview)
     humanoid:ApplyDescription(unlimitedDesc)
-    
-    print("Accessory limits removed! All equipped items (shirts, hats, etc.) should now layer without category restrictions.")
+    print("Accessory limits removed! All equipped items should layer without restrictions.")
 end
 
--- Auto-run on equip change or key press (R to refresh)
+-- Keybind for re-applying (R key)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.R then
@@ -74,11 +68,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Initial apply
-wait(2) -- Wait for character to load
+-- Initial apply with notification
+wait(2)
 applyUnlimitedAvatar()
+showNotification("Thanks for using Catalog Avatar Limit Bypasser! From butthole813")
 
--- Re-apply on character respawn (common in Avatar Creator)
+-- Re-apply on character respawn
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoid = newChar:WaitForChild("Humanoid")
